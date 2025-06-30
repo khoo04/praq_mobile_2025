@@ -1,6 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_crash_course_1/pages/event_details_page.dart';
-import 'package:flutter_crash_course_1/pages/webview_page.dart';
+import 'package:flutter_crash_course_1/widgets/app_scaffold.dart';
+
+import '../models/event.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -10,106 +15,131 @@ class MainPage extends StatefulWidget {
 }
 
 class _MainPageState extends State<MainPage> {
+  late Future<List<Event>> eventFuture;
+  final searchController = TextEditingController();
+  String searchKeyword = '';
+
+  Future<List<Event>> _loadEvents() async {
+    final source = await rootBundle.loadString("assets/data.json");
+    final decodedJson = jsonDecode(source) as List;
+    final events = decodedJson.map<Event>((e) => Event.fromJson(e)).toList();
+    return events;
+  }
+
+  @override
+  void initState() {
+    eventFuture = _loadEvents();
+    super.initState();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Image.asset(
-          "assets/images/ws_logo.png",
-          width: 64,
-          height: 64,
-        ),
-        centerTitle: true,
-        scrolledUnderElevation: 0,
-      ),
+    return AppScaffold(
       body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextField(
+              controller: searchController,
               decoration: InputDecoration(
                 labelText: "Search",
                 isDense: true,
                 border: OutlineInputBorder(),
               ),
+              onChanged: (value) {
+                setState(() {
+                  searchKeyword = value;
+                });
+              },
             ),
           ),
           Expanded(
-            child: ListView.builder(
-              itemBuilder: (context, index) {
-                return GestureDetector(
-                  child: EventListTile(),
-                  onTap: () {
-                    Navigator.of(context).push(MaterialPageRoute(
-                        builder: (context) => EventDetailsPage()));
-                  },
-                );
-              },
-              itemCount: 8,
-            ),
+            child: FutureBuilder(
+                future: eventFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  } else if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                          "Error in loading data : ${snapshot.error.toString()}"),
+                    );
+                  } else if (snapshot.data == null) {
+                    return Center(
+                      child: Text("No events found"),
+                    );
+                  }
+                  final events = snapshot.data!
+                      .where((event) =>
+                          event.title.toLowerCase().contains(searchKeyword))
+                      .toList();
+                  return ListView.builder(
+                      itemBuilder: (context, index) {
+                        return EventListTile(event: events[index]);
+                      },
+                      itemCount: events.length);
+                }),
           ),
         ],
-      ),
-      bottomNavigationBar: InkWell(
-        onTap: () {
-          Navigator.of(context)
-              .push(MaterialPageRoute(builder: (context) => WebviewPage()));
-        },
-        child: SizedBox(
-          height: 45,
-          child: Center(
-            child: Text("Official Website"),
-          ),
-        ),
       ),
     );
   }
 }
 
 class EventListTile extends StatelessWidget {
-  const EventListTile({
-    super.key,
-  });
+  final Event event;
+
+  const EventListTile({super.key, required this.event});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.all(8.0),
-      padding: EdgeInsets.all(8.0),
-      decoration: BoxDecoration(
-        color: Colors.amber,
-        borderRadius: BorderRadius.circular(12.0),
-      ),
-      height: 100,
-      child: Row(
-        spacing: 8.0,
-        children: [
-          Image.network(
-            "https://letsenhance.io/static/73136da51c245e80edc6ccfe44888a99/1015f/MainBefore.jpg",
-            width: 120,
-          ),
-          Expanded(
-            child: Column(
-              children: [
-                Text(
-                  "Title",
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Expanded(
-                  child: Text(
-                    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin a placerat neque. Etiam a congue libero. Integer auctor odio quis mi auctor, dictum suscipit Etiam a congue libero. Integer auctor odio quis mi auctor, dictum suscipit",
-                    softWrap: true,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+    return Card(
+      margin: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+      child: InkWell(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => EventDetailsPage(
+                event: event,
+              ),
             ),
-          )
-        ],
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            spacing: 12.0,
+            children: [
+              Image.asset(
+                event.image,
+                width: 80,
+              ),
+              Expanded(
+                child: Column(
+                  spacing: 4.0,
+                  children: [
+                    Text(
+                      event.title,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    Text(
+                      event.description,
+                      softWrap: true,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              )
+            ],
+          ),
+        ),
       ),
     );
   }
