@@ -22,7 +22,9 @@ class _MainPageState extends State<MainPage> {
   Future<List<Event>> _loadEvents() async {
     final source = await rootBundle.loadString("assets/data.json");
     final decodedJson = jsonDecode(source) as List;
+
     final events = decodedJson.map<Event>((e) => Event.fromJson(e)).toList();
+  
     return events;
   }
 
@@ -48,7 +50,7 @@ class _MainPageState extends State<MainPage> {
               ),
               onChanged: (value) {
                 setState(() {
-                  searchKeyword = value;
+                  searchKeyword = value.toLowerCase();
                 });
               },
             ),

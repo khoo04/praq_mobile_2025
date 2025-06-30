@@ -69,12 +69,13 @@ class _EventRegisterPageState extends State<EventRegisterPage> {
                         isDense: true),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return "Name is required";
+                        return "Name is required"; //Error message
                       }
                       return null;
                     },
                   ),
                   TextFormField(
+                    keyboardType: TextInputType.number,
                     controller: icNumController,
                     decoration: InputDecoration(
                         hintText: "IC",
